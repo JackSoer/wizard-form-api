@@ -47,7 +47,7 @@
     <header class="header">
       <h1 class="header__title">Home</h1>
       <nav class="nav">
-        <a href="./register.php" class="nav__item">
+        <a href="./views/register.php" class="nav__item">
           Register
         </a>
       </nav>

@@ -19,4 +19,4 @@ UserController::userValidation();
 // Store User
 UserController::store();
 
-Request::redirect('../../views/home.php');
+Request::redirect('../../index.php');
