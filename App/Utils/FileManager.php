@@ -1,5 +1,11 @@
 <?php
 
+declare (strict_types = 1);
+
+namespace App\Utils;
+
+use Exception;
+
 class FileManager
 {
     public function __construct()
@@ -7,18 +13,17 @@ class FileManager
     }
 
     // Upload file from temp directory
-    public static function uploadFile(array $file, string $storagePath)
+    public static function uploadFile(array $file, string $newFileName, string $storagePath)
     {
         if (!is_dir($storagePath)) {
             mkdir($storagePath, 0777, true);
         }
 
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = 'avatar' . time() . ".$extension";
+        $fileName = $newFileName . "_" . time() . ".$extension";
 
         if (!move_uploaded_file($file['tmp_name'], "$storagePath/$fileName")) {
-            Validator::addValidationError('avatar', "File wasn't uploaded");
-            Request::redirect("../../views/register.php");
+            throw new Exception("File wasn't loaded");
         }
 
         return "storage/$fileName";

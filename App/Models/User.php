@@ -1,6 +1,14 @@
 <?php
 
+declare (strict_types = 1);
+
+namespace App\Models\User;
+
 require __DIR__ . "/DB.php";
+
+use App\Models\DB;
+use App\Utils\FileManager;
+use Exception;
 
 class User
 {
@@ -8,32 +16,83 @@ class User
 
     public function __construct()
     {
-        $this->db = new DB(parse_ini_file(__DIR__ . '/../../.env'));
+        $config = parse_ini_file(__DIR__ . '/../../.env');
+
+        $this->db = new DB($config);
     }
 
-    // Save a user in a database
-    public function store($request, $filesRequest)
+    public function getUsers()
     {
-        $user = static::getUser($request, $filesRequest);
-        $avatarPath = null;
+        $query = "SELECT * FROM `users`";
 
-        if ($user['avatar']['tmp_name'] !== '') {
-            $avatarPath = static::uploadAvatar($user['avatar']);
+        $stmt = $this->db->pdo->prepare($query);
+
+        try {
+            $stmt->execute();
+            $users = $stmt->fetchAll();
+
+            return $users;
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage());
         }
+    }
 
-        $query = "INSERT INTO users (name, email, avatar, password) VALUES (:name, :email, :avatar, :password)";
+    public function getUserByEmail($email)
+    {
+        $query = "SELECT * FROM `users` WHERE email=:email";
+
         $params = [
-            'name' => $user['name'],
-            'email' => $user['email'],
-            'avatar' => $avatarPath,
-            'password' => password_hash($user['password'], PASSWORD_DEFAULT),
+            'email' => $email,
         ];
+
         $stmt = $this->db->pdo->prepare($query);
 
         try {
             $stmt->execute($params);
+            $user = $stmt->fetch();
+
+            return $user;
         } catch (\Exception $e) {
-            die($e->getMessage());
+            throw new Exception($e->getMessage());
+        }
+    }
+
+    // Save a user in a database
+    public function store($user)
+    {
+        $avatarPath = null;
+
+        if (isset($user['photo'])) {
+            try {
+                $avatarPath = static::uploadAvatar($user['photo']);
+            } catch (\Exception $e) {
+                throw new Exception($e->getMessage());
+            }
+        }
+
+        $query = "INSERT INTO users (first_name, birthdate, report_subject, country, phone, email, last_name, company, position, about_me, photo) VALUES (:first_name, :birthdate, :report_subject, :country, :phone, :email, :last_name, :company, :position, :about_me, :photo)";
+        $params = [
+            'first_name' => $user['firstName'],
+            'birthdate' => $user['birthdate'],
+            'report_subject' => $user['reportSubject'],
+            'country' => $user['country'],
+            'phone' => $user['phone'],
+            'email' => $user['email'],
+            'last_name' => $user['lastName'],
+            'company' => $user['company'],
+            'position' => $user['position'],
+            'about_me' => $user['aboutMe'],
+            'photo' => $avatarPath,
+        ];
+
+        $stmt = $this->db->pdo->prepare($query);
+
+        try {
+            $stmt->execute($params);
+
+            return $this->db->pdo->lastInsertId();
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage());
         }
     }
 
@@ -42,28 +101,13 @@ class User
     {
         $storagePath = __DIR__ . '/../../storage';
 
-        Validator::validateFile($avatar, ['image/jpeg', 'image/png'], 1);
-
-        if (!empty($_SESSION['validation'])) {
-            Request::redirect("../../views/register.php");
+        try {
+            $filePath = FileManager::uploadFile($avatar, 'avatar', $storagePath);
+        } catch (\Exception $e) {
+            throw new Exception($e->getMessage());
         }
-
-        $filePath = FileManager::uploadFile($avatar, $storagePath);
 
         return $filePath;
     }
 
-    // Extract and get user data from request
-    public static function getUser($request, $filesRequest)
-    {
-        $user = [];
-
-        $user['name'] = $request['name'] ?? null;
-        $user['email'] = $request['email'] ?? null;
-        $user['password'] = $request['password'] ?? null;
-        $user['passwordConfirmation'] = $request['password_confirmation'] ?? null;
-        $user['avatar'] = $filesRequest['avatar'] ?? null;
-
-        return $user;
-    }
 }
