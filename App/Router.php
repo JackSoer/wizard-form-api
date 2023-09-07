@@ -24,9 +24,56 @@ class Router
         return $this->register('get', $route, $action);
     }
 
-    public function post(string $route, callable | array $action): self
+    public function post(string $route, callable | array $action, array | null $objects = null): self
     {
+        if (!empty($objects)) {
+            foreach ($objects as $object) {
+                $id = $object['id'];
+                $routeWithId = $route . '/' . $id;
+
+                array_push($action, [$id]);
+
+                $this->register('post', $routeWithId, $action);
+
+                array_pop($action);
+            }
+
+            return $this;
+        }
+
         return $this->register('post', $route, $action);
+    }
+
+    public function put(string $route, callable | array $action, array $objects): self
+    {
+        foreach ($objects as $object) {
+            $id = $object['id'];
+            $routeWithId = $route . '/' . $id;
+
+            array_push($action, [$id]);
+
+            $this->register('put', $routeWithId, $action);
+
+            array_pop($action);
+        }
+
+        return $this;
+    }
+
+    public function delete(string $route, callable | array $action, array $objects): self
+    {
+        foreach ($objects as $object) {
+            $id = $object['id'];
+            $routeWithId = $route . '/' . $id;
+
+            array_push($action, [$id]);
+
+            $this->register('delete', $routeWithId, $action);
+
+            array_pop($action);
+        }
+
+        return $this;
     }
 
     public function routes(): array

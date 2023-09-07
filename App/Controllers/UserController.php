@@ -5,10 +5,6 @@ declare (strict_types = 1);
 use App\Models\User\User;
 use App\Utils\Validator;
 
-require dirname(__DIR__) . '/Utils/Validator.php';
-require dirname(__DIR__) . '/Utils/FileManager.php';
-require dirname(__DIR__) . '/Models/User.php';
-
 class UserController
 {
     public function __construct()
@@ -23,18 +19,19 @@ class UserController
 
         try {
             $users = $userModel->getUsers();
+            $camelCaseUsers = static::transformUsersToCamelCase($users);
 
             http_response_code(200);
 
             return json_encode([
-                "data" => $users,
+                "users" => $camelCaseUsers,
                 "status" => 200,
             ]);
         } catch (\Exception $e) {
-            http_response_code(500);
+            http_response_code(400);
 
             return json_encode([
-                "status" => 500,
+                "status" => 400,
                 "message" => $e->getMessage(),
             ]);
         }
@@ -45,25 +42,18 @@ class UserController
     {
         $user = static::getUser($_POST, $_FILES);
 
-        if (!static::userValidation($user)) {
-            http_response_code(402);
+        $errors = static::userValidation($user, 'post');
 
-            return json_encode([
-                "status" => 402,
-                "message" => "File size too big or incorrect file type",
-            ]);
-        }
-
-        $userModel = new User();
-
-        if ($userModel->getUserByEmail($user['email'])) {
+        if (!empty($errors)) {
             http_response_code(400);
 
             return json_encode([
                 "status" => 400,
-                "message" => "Email already taken",
+                "errors" => $errors,
             ]);
         }
+
+        $userModel = new User();
 
         try {
             $newUserId = $userModel->store($user);
@@ -72,7 +62,44 @@ class UserController
 
             return json_encode([
                 "status" => 201,
-                "data" => $newUserId,
+                "userId" => $newUserId,
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(400);
+
+            return json_encode([
+                "status" => 400,
+                "message" => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // Update user
+    public static function update(int $id)
+    {
+        $user = static::getUser($_POST, $_FILES);
+
+        $errors = static::userValidation($user, 'patch', $id);
+
+        if (!empty($errors)) {
+            http_response_code(400);
+
+            return json_encode([
+                "status" => 400,
+                "errors" => $errors,
+            ]);
+        }
+
+        $userModel = new User();
+
+        try {
+            $newUserId = $userModel->update($id, $user);
+
+            http_response_code(201);
+
+            return json_encode([
+                "status" => 201,
+                "userId" => $newUserId,
             ]);
         } catch (\Exception $e) {
             http_response_code(400);
@@ -85,13 +112,58 @@ class UserController
     }
 
     // Validate user fields
-    public static function userValidation($user)
+    public static function userValidation(array $user, string $method, int $id = null)
     {
-        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png'], 1)) {
-            return false;
+        $errors = [];
+
+        // Validate fields
+        if ($method === 'post') {
+            if (strlen($user["firstName"]) < 2) {
+                array_push($errors, "First name is require and min lenght is 2");
+            }
+            if (strlen($user["lastName"]) < 2) {
+                array_push($errors, "Last name is required and min lenght is 2");
+            }
+            if (!preg_match("/^(\([0-9]{3}\) |[0-9]{3}-)[0-9]{3}-[0-9]{4}$/", $user['phone'])) {
+                array_push($errors, "Phone should be in (xxx) xxx-xxxx format");
+            }
+            if (!filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
+                array_push($errors, "Email is not valid");
+            }
+            if (!preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
+                array_push($errors, "Birthdate is not valid");
+            }
+            if (!trim($user["country"])) {
+                array_push($errors, "Country is required");
+            }
+            if ((strlen($user["reportSubject"])) < 5) {
+                array_push($errors, "Report subject is required and min lenght is 5");
+            }
         }
 
-        return true;
+        // Validate a photo
+        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png'], 1)) {
+            array_push($errors, "File size too big or incorrect file type");
+        }
+
+        $userModel = new User();
+
+        // Validate email duplicates
+        $duplicateByEmail = $userModel->getUserByEmail($user['email']);
+
+        if ($method === 'post') {
+            if ($duplicateByEmail) {
+                array_push($errors, "Email already taken");
+            }
+        } else if ($method === 'patch') {
+            if (isset($user['email'])) {
+                if ($duplicateByEmail && $id !== $duplicateByEmail['id']) {
+                    array_push($errors, "Email already taken");
+                }
+            }
+        }
+
+        return $errors;
     }
 
     // Extract and get user data from request
@@ -112,5 +184,27 @@ class UserController
         $user['aboutMe'] = $request['aboutMe'] ?? null;
 
         return $user;
+    }
+
+    // Transform to json standart - camelCase
+    public static function transformUsersToCamelCase(array $users)
+    {
+        $newUsers = [];
+
+        foreach ($users as $user) {
+            $user['reportSubject'] = $user['report_subject'] ?? null;
+            $user['lastName'] = $user['last_name'] ?? null;
+            $user['firstName'] = $user['first_name'] ?? null;
+            $user['aboutMe'] = $user['about_me'] ?? null;
+
+            unset($user['report_subject']);
+            unset($user['about_me']);
+            unset($user['last_name']);
+            unset($user['first_name']);
+
+            array_push($newUsers, $user);
+        }
+
+        return $newUsers;
     }
 }
