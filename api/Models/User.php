@@ -2,10 +2,10 @@
 
 declare (strict_types = 1);
 
-namespace App\Models\User;
+namespace Api\Models;
 
-use App\Models\DB;
-use App\Utils\FileManager;
+use Api\Models\DB;
+use Api\Utils\FileManager;
 use Exception;
 
 class User

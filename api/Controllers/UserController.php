@@ -2,8 +2,10 @@
 
 declare (strict_types = 1);
 
-use App\Models\User\User;
-use App\Utils\Validator;
+namespace Api\Controllers;
+
+use Api\Models\User;
+use Api\Utils\Validator;
 
 class UserController
 {
