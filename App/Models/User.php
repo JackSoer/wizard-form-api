@@ -4,8 +4,6 @@ declare (strict_types = 1);
 
 namespace App\Models\User;
 
-require __DIR__ . "/DB.php";
-
 use App\Models\DB;
 use App\Utils\FileManager;
 use Exception;

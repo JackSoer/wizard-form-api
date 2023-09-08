@@ -8,6 +8,8 @@ require __DIR__ . '/App/App.php';
 require __DIR__ . '/App/Models/User.php';
 require __DIR__ . '/App/Utils/Validator.php';
 require __DIR__ . '/App/Utils/FileManager.php';
+require __DIR__ . '/App/Exceptions/RouteNotFoundException.php';
+require __DIR__ . "/App/Models/DB.php";
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: *");
@@ -26,8 +28,8 @@ $users = $userModel->getUsers();
 
 $router
     ->get('/users', [UserController::class, 'getUsers'])
-    ->post('/users', [UserController::class, 'store'])
-    ->post('/users', [UserController::class, 'update'], $users);
+    ->post('/users', [UserController::class, 'update'], $users)
+    ->post('/users', [UserController::class, 'store']);
 
 (new App(
     $router,

@@ -19,7 +19,7 @@ class UserController
 
         try {
             $users = $userModel->getUsers();
-            $camelCaseUsers = static::transformUsersToCamelCase($users);
+            $camelCaseUsers = static::transformUsers($users, 'http://localhost:3000');
 
             http_response_code(200);
 
@@ -95,10 +95,10 @@ class UserController
         try {
             $newUserId = $userModel->update($id, $user);
 
-            http_response_code(201);
+            http_response_code(200);
 
             return json_encode([
-                "status" => 201,
+                "status" => 200,
                 "userId" => $newUserId,
             ]);
         } catch (\Exception $e) {
@@ -118,16 +118,16 @@ class UserController
 
         // Validate fields
         if ($method === 'post') {
-            if (strlen($user["firstName"]) < 2) {
-                array_push($errors, "First name is require and min lenght is 2");
+            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['firstName'])) {
+                array_push($errors, "First name should be 2-20 characters and shouldn't include any special character.");
             }
-            if (strlen($user["lastName"]) < 2) {
-                array_push($errors, "Last name is required and min lenght is 2");
+            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['lastName'])) {
+                array_push($errors, "Last name should be 2-20 characters and shouldn't include any special character.");
             }
             if (!preg_match("/^(\([0-9]{3}\) |[0-9]{3}-)[0-9]{3}-[0-9]{4}$/", $user['phone'])) {
                 array_push($errors, "Phone should be in (xxx) xxx-xxxx format");
             }
-            if (!filter_var($user['email'], FILTER_VALIDATE_EMAIL)) {
+            if (!preg_match("/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/", $user['email'])) {
                 array_push($errors, "Email is not valid");
             }
             if (!preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
@@ -136,14 +136,14 @@ class UserController
             if (!trim($user["country"])) {
                 array_push($errors, "Country is required");
             }
-            if ((strlen($user["reportSubject"])) < 5) {
-                array_push($errors, "Report subject is required and min lenght is 5");
+            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['reportSubject'])) {
+                array_push($errors, "Report subject should be 2-20 characters and shouldn't include any special character.");
             }
         }
 
         // Validate a photo
-        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png'], 1)) {
-            array_push($errors, "File size too big or incorrect file type");
+        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'], 1)) {
+            array_push($errors, "File size too big or incorrect file type.Valid types: .jpg, .png, .svg, .webp");
         }
 
         $userModel = new User();
@@ -187,7 +187,7 @@ class UserController
     }
 
     // Transform to json standart - camelCase
-    public static function transformUsersToCamelCase(array $users)
+    public static function transformUsers(array $users, string $photoRoot)
     {
         $newUsers = [];
 
@@ -196,6 +196,7 @@ class UserController
             $user['lastName'] = $user['last_name'] ?? null;
             $user['firstName'] = $user['first_name'] ?? null;
             $user['aboutMe'] = $user['about_me'] ?? null;
+            $user['photo'] = $user['photo'] ? $photoRoot . "/" . $user['photo'] : null;
 
             unset($user['report_subject']);
             unset($user['about_me']);
