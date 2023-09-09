@@ -10,6 +10,7 @@ require __DIR__ . '/Utils/Validator.php';
 require __DIR__ . '/Utils/FileManager.php';
 require __DIR__ . '/Exceptions/RouteNotFoundException.php';
 require __DIR__ . "/Models/DB.php";
+require __DIR__ . "/../vendor/vlucas/phpdotenv/src/Dotenv.php";
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: *");
