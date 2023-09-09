@@ -6,6 +6,7 @@ namespace Api\Models;
 
 use Api\Models\DB;
 use Api\Utils\FileManager;
+use Dotenv\Dotenv;
 use Exception;
 
 class User
@@ -14,9 +15,10 @@ class User
 
     public function __construct()
     {
-        $config = parse_ini_file(__DIR__ . '/../../.env');
+        $dotenv = Dotenv::createImmutable(__DIR__);
+        $dotenv->load();
 
-        $this->db = new DB($config);
+        $this->db = new DB($_ENV);
     }
 
     public function getUsers()
