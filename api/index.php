@@ -16,7 +16,7 @@ use Api\Models\User;
 use Api\Router;
 use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv::createImmutable(__DIR__ . '/..');
 $dotenv->load();
 
 $router = new Router();
