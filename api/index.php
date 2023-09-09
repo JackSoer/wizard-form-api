@@ -2,15 +2,7 @@
 
 declare (strict_types = 1);
 
-require __DIR__ . '/Router.php';
-require __DIR__ . '/Controllers/UserController.php';
-require __DIR__ . '/App.php';
-require __DIR__ . '/Models/User.php';
-require __DIR__ . '/Utils/Validator.php';
-require __DIR__ . '/Utils/FileManager.php';
-require __DIR__ . '/Exceptions/RouteNotFoundException.php';
-require __DIR__ . "/Models/DB.php";
-require __DIR__ . "/../vendor/vlucas/phpdotenv/src/Dotenv.php";
+require __DIR__ . "/../vendor/autoload.php";
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: *");
@@ -22,6 +14,10 @@ use Api\App;
 use Api\Controllers\UserController;
 use Api\Models\User;
 use Api\Router;
+use Dotenv\Dotenv;
+
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
 $router = new Router();
 
