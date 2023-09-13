@@ -16,12 +16,12 @@ class FileManager
     public static function uploadFile(array $file, string $newFileName, string $storagePath)
     {
         if (!is_dir($storagePath)) {
-            mkdir($storagePath, 0777, true);
+             mkdir($storagePath, 0777, true);
         }
 
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
         $fileName = $newFileName . "_" . time() . ".$extension";
-
+	
         if (!move_uploaded_file($file['tmp_name'], "$storagePath/$fileName")) {
             throw new Exception("File wasn't loaded");
         }

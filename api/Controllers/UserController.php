@@ -21,7 +21,7 @@ class UserController
 
         try {
             $users = $userModel->getUsers();
-            $camelCaseUsers = static::transformUsers($users, 'http://localhost:3000');
+            $camelCaseUsers = static::transformUsers($users, 'http://91.107.207.176');
 
             http_response_code(200);
 
@@ -120,31 +120,46 @@ class UserController
 
         // Validate fields
         if ($method === 'post') {
-            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['firstName'])) {
-                array_push($errors, "First name should be 2-20 characters and shouldn't include any special character.");
+            if (!isset($user['firstName'])) {
+                array_push($errors, "First name is required");
             }
-            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['lastName'])) {
-                array_push($errors, "Last name should be 2-20 characters and shouldn't include any special character.");
+            if (!isset($user['lastName'])) {
+                array_push($errors, "Last name is required");
             }
-            if (!preg_match("/^(\([0-9]{3}\) |[0-9]{3}-)[0-9]{3}-[0-9]{4}$/", $user['phone'])) {
-                array_push($errors, "Phone should be in (xxx) xxx-xxxx format");
+            if (!isset($user['phone'])) {
+                array_push($errors, "Phone is required");
+            }
+            if (!isset($user['email'])) {
+                array_push($errors, "Email is required");
+                return $errors;
             }
             if (!preg_match("/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/", $user['email'])) {
                 array_push($errors, "Email is not valid");
             }
+            if (!isset($user['birthdate'])) {
+                array_push($errors, "Birthdate is required");
+                return $errors;
+            }
             if (!preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
                 array_push($errors, "Birthdate is not valid");
             }
-            if (!trim($user["country"])) {
+            if (!isset($user['country'])) {
                 array_push($errors, "Country is required");
             }
-            if (!preg_match("/[A-Za-z0-9]{2,20}/", $user['reportSubject'])) {
-                array_push($errors, "Report subject should be 2-20 characters and shouldn't include any special character.");
+            if (!isset($user['reportSubject'])) {
+                array_push($errors, "Report subject is required");
+            }
+        } else if ($method === 'patch') {
+            if (isset($user['email']) && !preg_match("/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/", $user['email'])) {
+                array_push($errors, "Email is not valid");
+            }
+            if (isset($user['birthdate']) && !preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
+                array_push($errors, "Birthdate is not valid");
             }
         }
 
         // Validate a photo
-        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'], 1)) {
+        if (isset($user['photo']) && !Validator::validateFile($user['photo'], ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'], 16)) {
             array_push($errors, "File size too big or incorrect file type.Valid types: .jpg, .png, .svg, .webp");
         }
 

@@ -167,7 +167,7 @@ class User
     public static function uploadAvatar($avatar)
     {
         $storagePath = __DIR__ . '/../../storage';
-
+	
         try {
             $filePath = FileManager::uploadFile($avatar, 'avatar', $storagePath);
         } catch (\Exception $e) {
