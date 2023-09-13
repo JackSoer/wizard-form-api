@@ -5,6 +5,7 @@ declare (strict_types = 1);
 namespace Api\Controllers;
 
 use Api\Models\User;
+use Api\Response;
 use Api\Utils\Validator;
 
 class UserController
@@ -21,21 +22,22 @@ class UserController
 
         try {
             $users = $userModel->getUsers();
-            $camelCaseUsers = static::transformUsers($users, 'http://91.107.207.176');
+            $camelCaseUsers = [];
+            $photoRoot = 'http://91.107.207.176';
 
-            http_response_code(200);
+            foreach ($users as $user) {
+                $camelCaseUser = Response::transformObjToCamelCase($user);
 
-            return json_encode([
-                "users" => $camelCaseUsers,
-                "status" => 200,
-            ]);
+                if (isset($camelCaseUser['photo'])) {
+                    $camelCaseUser['photo'] = $photoRoot . "/" . $camelCaseUser['photo'];
+                }
+
+                array_push($camelCaseUsers, $camelCaseUser);
+            }
+
+            return Response::jsonResponse(['users' => $camelCaseUsers]);
         } catch (\Exception $e) {
-            http_response_code(400);
-
-            return json_encode([
-                "status" => 400,
-                "message" => $e->getMessage(),
-            ]);
+            return Response::jsonResponse(["message" => $e->getMessage()], 400);
         }
     }
 
@@ -47,12 +49,7 @@ class UserController
         $errors = static::userValidation($user, 'post');
 
         if (!empty($errors)) {
-            http_response_code(400);
-
-            return json_encode([
-                "status" => 400,
-                "errors" => $errors,
-            ]);
+            return Response::jsonResponse(["errors" => $errors], 400);
         }
 
         $userModel = new User();
@@ -60,19 +57,9 @@ class UserController
         try {
             $newUserId = $userModel->store($user);
 
-            http_response_code(201);
-
-            return json_encode([
-                "status" => 201,
-                "userId" => $newUserId,
-            ]);
+            return Response::jsonResponse(["userId" => $newUserId], 201);
         } catch (\Exception $e) {
-            http_response_code(400);
-
-            return json_encode([
-                "status" => 400,
-                "message" => $e->getMessage(),
-            ]);
+            return Response::jsonResponse(["message" => $e->getMessage()], 400);
         }
     }
 
@@ -84,12 +71,7 @@ class UserController
         $errors = static::userValidation($user, 'patch', $id);
 
         if (!empty($errors)) {
-            http_response_code(400);
-
-            return json_encode([
-                "status" => 400,
-                "errors" => $errors,
-            ]);
+            return Response::jsonResponse(["errors" => $errors], 400);
         }
 
         $userModel = new User();
@@ -97,19 +79,9 @@ class UserController
         try {
             $newUserId = $userModel->update($id, $user);
 
-            http_response_code(200);
-
-            return json_encode([
-                "status" => 200,
-                "userId" => $newUserId,
-            ]);
+            return Response::jsonResponse(["userId" => $newUserId], 200);
         } catch (\Exception $e) {
-            http_response_code(400);
-
-            return json_encode([
-                "status" => 400,
-                "message" => $e->getMessage(),
-            ]);
+            return Response::jsonResponse(["message" => $e->getMessage()], 400);
         }
     }
 
@@ -119,43 +91,21 @@ class UserController
         $errors = [];
 
         // Validate fields
+        $validPattern = [
+            'email' => "/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/",
+            'birthdate' => "%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%",
+        ];
+
+        $validErrors = Validator::validateFields($validPattern, $user);
+
         if ($method === 'post') {
-            if (!isset($user['firstName'])) {
-                array_push($errors, "First name is required");
-            }
-            if (!isset($user['lastName'])) {
-                array_push($errors, "Last name is required");
-            }
-            if (!isset($user['phone'])) {
-                array_push($errors, "Phone is required");
-            }
-            if (!isset($user['email'])) {
-                array_push($errors, "Email is required");
-                return $errors;
-            }
-            if (!preg_match("/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/", $user['email'])) {
-                array_push($errors, "Email is not valid");
-            }
-            if (!isset($user['birthdate'])) {
-                array_push($errors, "Birthdate is required");
-                return $errors;
-            }
-            if (!preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
-                array_push($errors, "Birthdate is not valid");
-            }
-            if (!isset($user['country'])) {
-                array_push($errors, "Country is required");
-            }
-            if (!isset($user['reportSubject'])) {
-                array_push($errors, "Report subject is required");
-            }
+            $requireFields = ['firstName', 'lastName', 'phone', 'email', 'birthdate', 'country', 'reportSubject'];
+
+            $requireErrors = Validator::validateRequireFields($requireFields, $user);
+
+            $errors = [...$errors, ...$validErrors, ...$requireErrors];
         } else if ($method === 'patch') {
-            if (isset($user['email']) && !preg_match("/[a-z0-9._%+-]+@[a-z0-9.-]+.[a-z]{2,4}$/", $user['email'])) {
-                array_push($errors, "Email is not valid");
-            }
-            if (isset($user['birthdate']) && !preg_match("%[1-2][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]%", $user['birthdate'])) {
-                array_push($errors, "Birthdate is not valid");
-            }
+            $errors = [...$errors, ...$validErrors];
         }
 
         // Validate a photo
@@ -166,15 +116,15 @@ class UserController
         $userModel = new User();
 
         // Validate email duplicates
-        $duplicateByEmail = $userModel->getUserByEmail($user['email']);
+        if (isset($user['email'])) {
+            $duplicateByEmail = $userModel->getUserByEmail($user['email']);
 
-        if ($method === 'post') {
-            if ($duplicateByEmail) {
+            if ($method === 'post' && $duplicateByEmail) {
                 array_push($errors, "Email already taken");
-            }
-        } else if ($method === 'patch') {
-            if (isset($user['email'])) {
-                if ($duplicateByEmail && $id !== $duplicateByEmail['id']) {
+            } else if ($method === 'patch' && isset($user['email']) && $duplicateByEmail) {
+                $isSamePerson = $id === $duplicateByEmail['id'];
+
+                if (!$isSamePerson) {
                     array_push($errors, "Email already taken");
                 }
             }
@@ -188,41 +138,14 @@ class UserController
     {
         $user = [];
 
-        $user['firstName'] = $request['firstName'] ?? null;
-        $user['birthdate'] = $request['birthdate'] ?? null;
-        $user['reportSubject'] = $request['reportSubject'] ?? null;
-        $user['country'] = $request['country'] ?? null;
-        $user['photo'] = $filesRequest['photo'] ?? null;
-        $user['phone'] = $request['phone'] ?? null;
-        $user['email'] = $request['email'] ?? null;
-        $user['lastName'] = $request['lastName'] ?? null;
-        $user['company'] = $request['company'] ?? null;
-        $user['position'] = $request['position'] ?? null;
-        $user['aboutMe'] = $request['aboutMe'] ?? null;
-
-        return $user;
-    }
-
-    // Transform to json standart - camelCase
-    public static function transformUsers(array $users, string $photoRoot)
-    {
-        $newUsers = [];
-
-        foreach ($users as $user) {
-            $user['reportSubject'] = $user['report_subject'] ?? null;
-            $user['lastName'] = $user['last_name'] ?? null;
-            $user['firstName'] = $user['first_name'] ?? null;
-            $user['aboutMe'] = $user['about_me'] ?? null;
-            $user['photo'] = $user['photo'] ? $photoRoot . "/" . $user['photo'] : null;
-
-            unset($user['report_subject']);
-            unset($user['about_me']);
-            unset($user['last_name']);
-            unset($user['first_name']);
-
-            array_push($newUsers, $user);
+        foreach ($request as $key => $value) {
+            $user[$key] = $value ?? null;
         }
 
-        return $newUsers;
+        foreach ($filesRequest as $key => $value) {
+            $user[$key] = $value ?? null;
+        }
+
+        return $user;
     }
 }

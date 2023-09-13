@@ -5,6 +5,7 @@ declare (strict_types = 1);
 namespace Api\Models;
 
 use Api\Models\DB;
+use Api\Request;
 use Api\Utils\FileManager;
 use Exception;
 
@@ -87,19 +88,9 @@ class User
         }
 
         $query = "INSERT INTO users (first_name, birthdate, report_subject, country, phone, email, last_name, company, position, about_me, photo) VALUES (:first_name, :birthdate, :report_subject, :country, :phone, :email, :last_name, :company, :position, :about_me, :photo)";
-        $params = [
-            'first_name' => $user['firstName'],
-            'birthdate' => $user['birthdate'],
-            'report_subject' => $user['reportSubject'],
-            'country' => $user['country'],
-            'phone' => $user['phone'],
-            'email' => $user['email'],
-            'last_name' => $user['lastName'],
-            'company' => $user['company'],
-            'position' => $user['position'],
-            'about_me' => $user['aboutMe'],
-            'photo' => $avatarPath,
-        ];
+
+        $params = Request::getStoreParams($user, ["company", "position", "aboutMe"]);
+        $params['photo'] = $avatarPath ?? null;
 
         $stmt = $this->db->pdo->prepare($query);
 
@@ -126,6 +117,7 @@ class User
             }
         }
 
+        // Upload new avatar
         $avatarPath = null;
 
         if (isset($user['photo'])) {
@@ -137,22 +129,11 @@ class User
         }
 
         $query = "UPDATE users SET first_name=:first_name, birthdate=:birthdate, report_subject=:report_subject, country=:country, phone=:phone, email=:email, last_name=:last_name, company=:company, position=:position, about_me=:about_me, photo=:photo WHERE id=:id";
-        $params = [
-            'first_name' => $user['firstName'] ?? $oldUser['first_name'],
-            'birthdate' => $user['birthdate'] ?? $oldUser['birthdate'],
-            'report_subject' => $user['reportSubject'] ?? $oldUser['report_subject'],
-            'country' => $user['country'] ?? $oldUser['country'],
-            'phone' => $user['phone'] ?? $oldUser['phone'],
-            'email' => $user['email'] ?? $oldUser['email'],
-            'last_name' => $user['lastName'] ?? $oldUser['last_name'],
-            'company' => $user['company'] ?? $oldUser['company'],
-            'position' => $user['position'] ?? $oldUser['position'],
-            'about_me' => $user['aboutMe'] ?? $oldUser['about_me'],
-            'photo' => $avatarPath ?? $oldUser['photo'],
-            'id' => $id,
-        ];
 
         $stmt = $this->db->pdo->prepare($query);
+
+        $params = Request::getPatchParams($user, $oldUser);
+        $params['photo'] = $avatarPath ?? $oldUser['photo'];
 
         try {
             $stmt->execute($params);
@@ -167,7 +148,7 @@ class User
     public static function uploadAvatar($avatar)
     {
         $storagePath = __DIR__ . '/../../storage';
-	
+
         try {
             $filePath = FileManager::uploadFile($avatar, 'avatar', $storagePath);
         } catch (\Exception $e) {
