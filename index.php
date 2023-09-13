@@ -25,9 +25,9 @@ $userModel = new User();
 $users = $userModel->getUsers();
 
 $router
-    ->get('/users', [UserController::class, 'getUsers'])
-    ->post('/users', [UserController::class, 'update'], $users)
-    ->post('/users', [UserController::class, 'store']);
+    ->get('/api/users', [UserController::class, 'getUsers'])
+    ->post('/api/users', [UserController::class, 'update'], $users)
+    ->post('/api/users', [UserController::class, 'store']);
 
 (new App(
     $router,
